@@ -19,12 +19,14 @@ Chose WebSocket over REST/HTTP because:
 - Best balance of latency and quality
 - Context injection via structured [GAME STATE] text block
 - max_tokens=150 to enforce short responses
-- History: last 10 turns (rolling window in context_manager.py)
+- History: last 10 turns (rolling window in `server/brain.py` ConversationHistory class)
+- Action tags embedded in responses: `[ACTION:follow_player:Name]`, parsed and stripped before TTS
 
-### TTS: ElevenLabs Streaming
-- Streaming API reduces time-to-first-audio to < 800ms
-- 100ms "thinking" earcon plays on V release so user knows input was received
+### TTS: ElevenLabs Streaming + pyttsx3 Fallback
+- ElevenLabs primary: `eleven_turbo_v2_5` model, PCM 16kHz output, played via sounddevice
+- pyttsx3 fallback: Windows SAPI5, activates automatically when no ElevenLabs API key
 - asyncio.Lock prevents overlapping TTS calls
+- Provider configurable in `config/settings.json` (`elevenlabs` / `pyttsx3` / `none`)
 
 ### Proactive Rate Limiting
 - Per-event-type cooldown dict (e.g., mob_spawn: 30s)
@@ -52,5 +54,18 @@ The personality must feel human, not AI:
 
 ## File Notes
 - `.env` holds API keys — never committed (in .gitignore)
-- `config/settings.json` holds user-tunable runtime settings
+- `config/settings.json` holds user-tunable runtime settings (PTT key, cooldowns, model, TTS provider)
 - `DISABLE_MINECRAFT=true` in .env skips bot connection for voice-only testing
+- GitHub repo: https://github.com/Jackson-DM/CoopBuddy-AI-Agent
+- Run with `start.bat` (Windows) or manually: `python -m server.main` + `cd bot && node bot.js`
+
+## Module Map
+- `server/main.py` — Orchestrator entry point, wires voice + brain + WS server
+- `server/brain.py` — Claude AI engine, conversation history, proactive event handling
+- `server/voice.py` — PTT capture → STT → TTS pipeline
+- `server/ws_server.py` — Python WebSocket server (port 8765)
+- `server/message_schema.py` — Typed message envelopes (game_event, action, ping/pong)
+- `bot/bot.js` — Mineflayer bot entry point, event listeners, action handlers
+- `bot/wsClient.js` — Node WebSocket client with exponential backoff
+- `bot/actions/movement.js` — Follow/stop pathfinder actions
+- `bot/context/gameState.js` — Rolling game state snapshot

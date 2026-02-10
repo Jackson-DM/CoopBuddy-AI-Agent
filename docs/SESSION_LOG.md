@@ -27,33 +27,35 @@
 
 ---
 
-## Session 2 — Full Rebuild & Implementation Pass
+## Session 2 — Full Rebuild & GitHub Push
 **Date**: 2026-02-10
-**Status**: IN PROGRESS
+**Status**: Complete
 
 ### Overview
-Second agent session rebuilding the project from the ground up — scaffolding, polished README, full module implementations, and pushing to GitHub.
-
-### Task List (agent's queue)
-1. ~~Create scaffolding files (.gitignore, .env.example, server/__init__.py)~~ **DONE**
-2. Write portfolio-quality README.md — **IN PROGRESS**
-3. Delete `nul` artifact and `git init` + GitHub push
-4. Create `config/settings.json` and `requirements.txt`
-5. Implement `server/brain.py` (Claude AI Brain)
-6. Implement `server/voice.py` (Voice Pipeline)
-7. Implement `bot/bot.js` (Main Bot Entry Point)
-8. Implement `server/main.py` (Orchestrator)
-9. Create `start.bat` and final git commit + push
-10. ~~Install Python 3.11~~ **DONE**
-
-### Notes
-- Python 3.11 installed on the system this session
-- Agent is doing a clean rebuild — not just patching Session 1 output
-- `nul` file is a Windows artifact that will be cleaned up in step 3
-- Repo will be initialized and pushed to GitHub this session
+Session 1 built all Phase 1 files but they weren't saved before hitting the token limit. This session rebuilt everything from scratch, set up GitHub, and pushed a working codebase.
 
 ### Completed
-*(will be filled in as work finishes)*
+- Installed Python 3.11.9 via winget, added to Windows user PATH
+- Created scaffolding: `.gitignore`, `.env.example`, `server/__init__.py`
+- Wrote portfolio-quality `README.md` (badges, ASCII architecture, quick start, roadmap)
+- Deleted stray `nul` Windows artifact
+- `git init` + pushed to https://github.com/Jackson-DM/CoopBuddy-AI-Agent
+- `config/settings.json` — PTT key, MC connection, voice/STT/TTS config, brain model + per-event cooldowns
+- `requirements.txt` — 9 Python deps (anthropic, websockets, faster-whisper, elevenlabs, pyttsx3, sounddevice, numpy, keyboard, python-dotenv)
+- `server/brain.py` — Claude personality engine, conversation history with game state injection, proactive rate limiting (per-event cooldowns + global lock + queue depth 2), `[ACTION:type:param]` extraction
+- `server/voice.py` — AudioCapture (sounddevice), STT (faster-whisper lazy-loaded), TTS (ElevenLabs + pyttsx3 fallback), VoicePipeline with global V key PTT
+- `bot/bot.js` — Mineflayer entry point, pathfinder (canDig=false), event listeners (chat, entitySpawn, health, death, respawn, rain, playerJoined), action handlers, 5s game state snapshots
+- `server/main.py` — Orchestrator wiring voice→brain→TTS+chat, game events→brain, Windows asyncio compat
+- `start.bat` — Prereq checks, auto venv + dep install, launches both processes
 
 ### Key Decisions
-*(will be filled in as decisions are made)*
+- Used `winget` for Python install (curl had SSL issues)
+- TTS fallback chain: ElevenLabs → pyttsx3 (no API key needed)
+- Player chat messages routed through `brain.think()` same as voice (treated as equivalent input)
+- Bot auto-follows on spawn, re-follows after respawn with 2s delay
+
+### Next Session
+- Set up `.env` with real API keys and test end-to-end
+- Install Python deps in venv, install Node deps in bot/
+- Test brain standalone, voice standalone, bot standalone, then full pipeline
+- Tune personality and response quality
