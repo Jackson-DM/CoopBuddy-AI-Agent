@@ -1,0 +1,32 @@
+{
+  "ptt_key": "v",
+
+  "minecraft": {
+    "host": "localhost",
+    "port": 25565,
+    "version": "1.20.4",
+    "bot_username": "CoopBuddy"
+  },
+
+  "voice": {
+    "stt_model": "base.en",
+    "tts_provider": "elevenlabs",
+    "min_recording_seconds": 0.3,
+    "min_transcript_words": 2,
+    "stt_logprob_threshold": -1.0
+  },
+
+  "brain": {
+    "model": "claude-sonnet-4-5-20250929",
+    "max_tokens": 150,
+    "history_length": 10,
+    "cooldowns": {
+      "mob_spawn": 30,
+      "player_death": 60,
+      "health_low": 45,
+      "weather_change": 120,
+      "player_join": 10
+    },
+    "max_queue_depth": 2
+  }
+}

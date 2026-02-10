@@ -1,0 +1,9 @@
+anthropic>=0.40.0
+websockets>=12.0
+faster-whisper>=1.0.0
+elevenlabs>=1.0.0
+pyttsx3>=2.90
+sounddevice>=0.4.6
+numpy>=1.24.0
+keyboard>=0.13.5
+python-dotenv>=1.0.0
