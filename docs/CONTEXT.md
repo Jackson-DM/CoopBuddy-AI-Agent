@@ -1,0 +1,56 @@
+# CoopBuddy — Decisions & Context Notes
+
+## Architecture Decisions
+
+### IPC: WebSocket (not HTTP)
+Chose WebSocket over REST/HTTP because:
+- Game events are a continuous stream (mob spawns, health ticks, etc.)
+- Need bidirectional comms (Python → Node for actions, Node → Python for events)
+- Zero per-message overhead after handshake
+- Python is WS server (port 8765); Node is client
+
+### STT: faster-whisper base.en
+- ~400-800ms on CPU (acceptable for push-to-talk feel)
+- Free, local, private — no latency variance from cloud
+- base.en model is the sweet spot for speed vs accuracy
+- Discard results with avg_logprob < -1.0 or < 3 words (noise filter)
+
+### LLM: Claude claude-sonnet-4-5-20250929
+- Best balance of latency and quality
+- Context injection via structured [GAME STATE] text block
+- max_tokens=150 to enforce short responses
+- History: last 10 turns (rolling window in context_manager.py)
+
+### TTS: ElevenLabs Streaming
+- Streaming API reduces time-to-first-audio to < 800ms
+- 100ms "thinking" earcon plays on V release so user knows input was received
+- asyncio.Lock prevents overlapping TTS calls
+
+### Proactive Rate Limiting
+- Per-event-type cooldown dict (e.g., mob_spawn: 30s)
+- Global concurrent call limit: 1 at a time
+- Max queue depth: 2 (drop events if backed up)
+- Proactive events suspended while push-to-talk key held (voice always wins)
+
+### Bot Movement: mineflayer-pathfinder
+- Stay 3-5 blocks behind player (goal: FollowEntity, distance 3-5)
+- Most mature pathfinding plugin for Mineflayer
+- FSM: IDLE → FOLLOWING → ACTION (Phase 2 adds combat states)
+
+### Minecraft Version: Java 1.20.4, online-mode=false
+- Mineflayer 4.22.0 compatible
+- online-mode=false means bot needs no premium account
+
+## Personality Notes
+The personality must feel human, not AI:
+- Default energy is chill/low-key — hype hits harder because it's rare
+- Short fragments are fine ("Bro." is a complete response)
+- Light swearing OK (crap, damn, hell) — hard swears never
+- Never say "As an AI" or any meta-commentary
+- Be slightly wrong sometimes — that's human
+- Has opinions: Nether is sick, Phantoms are the worst, Endermen = slightly nervous
+
+## File Notes
+- `.env` holds API keys — never committed (in .gitignore)
+- `config/settings.json` holds user-tunable runtime settings
+- `DISABLE_MINECRAFT=true` in .env skips bot connection for voice-only testing

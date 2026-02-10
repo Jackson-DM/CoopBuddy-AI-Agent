@@ -1,0 +1,14 @@
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+nul
+models/
+*.log
