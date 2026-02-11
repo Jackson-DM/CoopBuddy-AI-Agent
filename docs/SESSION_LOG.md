@@ -59,3 +59,51 @@ Session 1 built all Phase 1 files but they weren't saved before hitting the toke
 - Install Python deps in venv, install Node deps in bot/
 - Test brain standalone, voice standalone, bot standalone, then full pipeline
 - Tune personality and response quality
+
+---
+
+## Session 3 — First Live Test & Bug Fixes
+**Date**: 2026-02-10
+**Status**: Complete
+
+### Overview
+Set up `.env`, installed all dependencies, got the bot into a live Minecraft server, and fixed initial bugs. Bot is now following the player in-game.
+
+### Completed
+- Created `.env` with Anthropic API key (credits still needed)
+- Installed Python deps in venv (all 50+ packages including anthropic, faster-whisper, elevenlabs, pyttsx3, etc.)
+- Installed Node deps in bot/ (mineflayer, pathfinder, ws, etc.)
+- Launched Python WS server + Node bot — bot joined Minecraft and connected via WebSocket
+- **Bug fix**: Added event debouncing in `bot/bot.js` — `health_low` (45s cooldown), `player_death` (60s cooldown), skip health=0
+- **Bug fix**: Fixed `PLAYER_NAME` in `.env` — was "Jackson", actual in-game name is "JaxieJ"
+- Set server to peaceful mode (bot was dying in a creeper death loop)
+- Confirmed bot follows player reliably on peaceful
+
+### Bugs Found & Fixed
+1. **health_low spam**: `bot.on('health')` fired on every tick below 6 HP → added `shouldSendEvent()` debounce with 45s cooldown
+2. **player_death spam**: Rapid death/respawn loop flooded events → added 60s debounce
+3. **Wrong player name**: `.env` had `PLAYER_NAME=Jackson` but in-game username is `JaxieJ` → pathfinder couldn't find target
+4. **Creeper explosion crash**: Explosion packet caused `ECONNRESET` → resolved by setting peaceful mode
+
+### Bugs Found & Not Yet Fixed
+- **weather_change spam**: `rain` event fires every ~10s, needs debouncing in `bot/bot.js`
+- **Claude API errors**: Anthropic account has no credits — all brain calls return 400. Fallback message works ("bruh my brain just lagged")
+
+### Key Learnings
+- Bot WS client auto-reconnects with exponential backoff — worked seamlessly after crash
+- Python server survived bot disconnects and reconnects without restart
+- pyttsx3 TTS fallback initializes correctly on first use (comtypes SAPI5 setup)
+
+### Current State
+- **Bot**: In-game, following player, surviving on peaceful ✓
+- **WS Bridge**: Connected and relaying events ✓
+- **Brain**: Code works but no API credits — returns fallback message
+- **Voice**: Pipeline initialized, PTT key registered, untested end-to-end
+- **TTS**: pyttsx3 fallback ready, ElevenLabs needs API key
+
+### Next Session
+- Add Anthropic API credits and test brain responses
+- Debounce weather_change events
+- Test voice pipeline (PTT → STT → brain → TTS)
+- Test on normal/hard difficulty once brain is responding
+- Consider Phase 2 features based on how it feels

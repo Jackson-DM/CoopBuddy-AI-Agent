@@ -5,21 +5,22 @@ CoopBuddy is an AI companion agent that plays Minecraft alongside the user. It r
 
 ## Architecture
 ```
-Mic → voice/input.py (push-to-talk)
-    → voice/stt.py (faster-whisper, local)
-    → brain/agent.py (Claude API)
-    → voice/tts.py (ElevenLabs streaming)
-    → Speakers
+Mic (hold V) → server/voice.py (AudioCapture)
+             → server/voice.py (STT — faster-whisper)
+             → server/brain.py (Claude API)
+             → server/voice.py (TTS — ElevenLabs/pyttsx3)
+             → Speakers
 
-Minecraft events → bot/eventHandlers.js
-               → bot/wsClient.js
-               → server/ws_server.py (WebSocket bridge, port 8765)
-               → brain/agent.py (proactive gate → Claude)
-               → voice/tts.py + in-game chat echo
+Minecraft events → bot/bot.js (event listeners)
+               → bot/wsClient.js (WebSocket client)
+               → server/ws_server.py (WebSocket server, port 8765)
+               → server/main.py (orchestrator)
+               → server/brain.py (proactive gate → Claude)
+               → TTS + in-game chat echo
 ```
 
 ## Tech Stack
-- **Python 3.10+**: AI brain, voice pipeline, WebSocket server
+- **Python 3.11**: AI brain, voice pipeline, WebSocket server
 - **Node.js 18+**: Mineflayer bot (joins game as real player)
 - **IPC**: WebSocket (persistent, bidirectional, port 8765)
 - **STT**: faster-whisper base.en (local, ~400-800ms CPU)
@@ -29,16 +30,22 @@ Minecraft events → bot/eventHandlers.js
 
 ## Phases
 
-### Phase 1 — MVP (Implemented)
+### Phase 1 — MVP
 - [x] Docs files
 - [x] WebSocket bridge (Python server + Node client)
-- [x] Mineflayer bot connects + follows player
-- [x] Voice capture (push-to-talk V key) + STT
-- [x] Claude brain (reactive, voice-only)
-- [x] ElevenLabs TTS output
-- [x] Proactive event: hostile mob spawn
+- [x] Mineflayer bot connects + follows player (VERIFIED IN-GAME)
+- [x] Voice capture (push-to-talk V key) + STT (code complete, untested)
+- [x] Claude brain (reactive + proactive) (code complete, needs API credits)
+- [x] TTS output: ElevenLabs + pyttsx3 fallback (code complete, untested)
+- [x] Proactive events: mob_spawn, health_low, player_death, weather_change, player_join
+- [x] Event debouncing (bot-side + brain-side cooldowns)
 - [x] In-game chat echo
 - [x] Startup scripts + .env template
+- [x] GitHub repo: https://github.com/Jackson-DM/CoopBuddy-AI-Agent
+- [ ] **BLOCKED**: Anthropic API credits needed to test brain responses
+- [ ] **TODO**: Debounce weather_change events
+- [ ] **TODO**: Test voice pipeline end-to-end
+- [ ] **TODO**: Test on normal difficulty with working brain
 
 ### Phase 2 — Full Game Awareness (Future)
 - Full game state: inventory, effects, dimension

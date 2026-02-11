@@ -39,9 +39,18 @@ Chose WebSocket over REST/HTTP because:
 - Most mature pathfinding plugin for Mineflayer
 - FSM: IDLE → FOLLOWING → ACTION (Phase 2 adds combat states)
 
+### Event Debouncing (bot-side)
+- `bot/bot.js` has a `shouldSendEvent(eventType, cooldownMs)` function
+- `health_low`: 45s cooldown, skips health=0 (that's a death event)
+- `player_death`: 60s cooldown
+- `weather_change`: NOT YET DEBOUNCED — still fires every ~10s during rain (TODO)
+- Brain-side also has per-event cooldowns in `config/settings.json` as a second layer
+
 ### Minecraft Version: Java 1.20.4, online-mode=false
 - Mineflayer 4.22.0 compatible
 - online-mode=false means bot needs no premium account
+- Server should be on peaceful for testing (bot has no combat/survival AI yet)
+- Player in-game username: `JaxieJ` (set in `.env` as `PLAYER_NAME`)
 
 ## Personality Notes
 The personality must feel human, not AI:
