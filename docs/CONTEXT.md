@@ -43,7 +43,7 @@ Chose WebSocket over REST/HTTP because:
 - `bot/bot.js` has a `shouldSendEvent(eventType, cooldownMs)` function
 - `health_low`: 45s cooldown, skips health=0 (that's a death event)
 - `player_death`: 60s cooldown
-- `weather_change`: NOT YET DEBOUNCED — still fires every ~10s during rain (TODO)
+- `weather_change`: 120s cooldown
 - Brain-side also has per-event cooldowns in `config/settings.json` as a second layer
 
 ### Minecraft Version: Java 1.20.4, online-mode=false

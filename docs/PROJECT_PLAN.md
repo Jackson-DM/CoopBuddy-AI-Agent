@@ -43,8 +43,8 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] Startup scripts + .env template
 - [x] GitHub repo: https://github.com/Jackson-DM/CoopBuddy-AI-Agent
 - [x] Anthropic API credits loaded — brain responds in character ✓
-- [ ] **TODO**: Debounce weather_change events
-- [ ] **TODO**: Test voice pipeline end-to-end
+- [x] Debounce all events (health_low 45s, death 60s, weather 120s) ✓
+- [x] Voice pipeline end-to-end: PTT → STT → brain → TTS ✓
 - [ ] **TODO**: Test on normal difficulty with working brain
 
 ### Phase 2 — Full Game Awareness (Future)

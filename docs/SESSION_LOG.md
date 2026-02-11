@@ -95,15 +95,26 @@ Set up `.env`, installed all dependencies, got the bot into a live Minecraft ser
 - Anthropic API credits are prepaid, not subscription — $5 goes very far with 150-token responses
 - Brain personality nails the vibe out of the box — Gen Z vernacular, emojis, stays in character when tested with off-the-wall messages
 
-### Current State
+### Additional Fixes (same session)
+- **weather_change debounced** at 120s in `bot/bot.js`
+- **Focusrite mic**: `AudioCapture` auto-detects Focusrite input device (default was Waves SoundGrid virtual driver)
+- **pyttsx3 deadlock**: COM objects deadlocked when reused across asyncio executor threads — fixed by creating fresh engine per call
+
+### Voice Pipeline — VERIFIED WORKING
+- PTT (hold V) → Focusrite mic capture → faster-whisper STT → Claude brain → pyttsx3 TTS + in-game chat
+- STT transcription is accurate, even for long multi-sentence inputs
+- ~2-3s total latency from voice release to spoken response
+- pyttsx3 speaks every response reliably after the fresh-engine fix
+
+### Current State — PHASE 1 COMPLETE
 - **Bot**: In-game, following player, surviving on peaceful ✓
 - **WS Bridge**: Connected and relaying events ✓
-- **Brain**: WORKING — responds in character via in-game chat, ~2-3s response time ✓
-- **Voice**: Pipeline initialized, PTT key registered, untested end-to-end
-- **TTS**: pyttsx3 fallback ready, ElevenLabs needs API key
+- **Brain**: Responds in character via chat, ~2-3s latency ✓
+- **Voice**: Full PTT → STT → Brain → TTS pipeline working ✓
+- **TTS**: pyttsx3 fallback working reliably ✓
+- **Events**: All debounced (health_low 45s, death 60s, weather 120s) ✓
 
 ### Next Session
-- Debounce weather_change events
-- Test voice pipeline (PTT → STT → brain → TTS)
 - Test on normal/hard difficulty with working brain
-- Consider Phase 2 features based on how it feels
+- Consider ElevenLabs TTS for better voice quality
+- Explore Phase 2 features (more events, combat AI, inventory awareness)
