@@ -70,6 +70,18 @@ bot.once('spawn', () => {
   }, 5000);
 });
 
+// ── Event debounce tracking ─────────────────────────────────────────────────
+
+const lastEventSent = {};
+
+function shouldSendEvent(eventType, cooldownMs) {
+  const now = Date.now();
+  const last = lastEventSent[eventType] || 0;
+  if (now - last < cooldownMs) return false;
+  lastEventSent[eventType] = now;
+  return true;
+}
+
 // ── Game event listeners ────────────────────────────────────────────────────
 
 // Chat messages (from players, not the bot itself)
@@ -92,22 +104,24 @@ bot.on('entitySpawn', (entity) => {
   });
 });
 
-// Health changes — alert when low
+// Health changes — alert when low (debounced: 45s)
 bot.on('health', () => {
   gameState.update({
     playerHealth: bot.health,
     playerFood: bot.food,
   });
 
-  if (bot.health <= 6) {
+  if (bot.health <= 6 && bot.health > 0 && shouldSendEvent('health_low', 45_000)) {
     sendGameEvent('health_low', { health: bot.health });
   }
 });
 
-// Death
+// Death (debounced: 60s)
 bot.on('death', () => {
   gameState.update({ lastDeath: Date.now() });
-  sendGameEvent('player_death', { cause: 'Bot died' });
+  if (shouldSendEvent('player_death', 60_000)) {
+    sendGameEvent('player_death', { cause: 'Bot died' });
+  }
 });
 
 // Respawn — auto re-follow after delay
