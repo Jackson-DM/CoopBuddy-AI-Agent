@@ -45,6 +45,7 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] Anthropic API credits loaded — brain responds in character ✓
 - [x] Debounce all events (health_low 45s, death 60s, weather 120s) ✓
 - [x] Voice pipeline end-to-end: PTT → STT → brain → TTS ✓
+- [x] ElevenLabs TTS integrated — custom voice, natural output ✓
 - [ ] **TODO**: Test on normal difficulty with working brain
 
 ### Phase 2 — Full Game Awareness (Future)

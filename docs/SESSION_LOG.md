@@ -106,15 +106,21 @@ Set up `.env`, installed all dependencies, got the bot into a live Minecraft ser
 - ~2-3s total latency from voice release to spoken response
 - pyttsx3 speaks every response reliably after the fresh-engine fix
 
-### Current State — PHASE 1 COMPLETE
+### ElevenLabs TTS Integration
+- Signed up for ElevenLabs ($5/mo plan), created custom voice
+- Added API key + voice ID to `.env`
+- ElevenLabs TTS now active — `eleven_turbo_v2_5` model, PCM 16kHz
+- Voice responses sound natural, all API calls returning 200 OK
+- pyttsx3 still available as automatic fallback if ElevenLabs key is removed
+
+### Current State — PHASE 1 COMPLETE + ELEVENLABS
 - **Bot**: In-game, following player, surviving on peaceful ✓
 - **WS Bridge**: Connected and relaying events ✓
 - **Brain**: Responds in character via chat, ~2-3s latency ✓
-- **Voice**: Full PTT → STT → Brain → TTS pipeline working ✓
-- **TTS**: pyttsx3 fallback working reliably ✓
+- **Voice**: Full PTT → STT → Brain → ElevenLabs TTS pipeline working ✓
+- **TTS**: ElevenLabs primary, pyttsx3 fallback ✓
 - **Events**: All debounced (health_low 45s, death 60s, weather 120s) ✓
 
 ### Next Session
 - Test on normal/hard difficulty with working brain
-- Consider ElevenLabs TTS for better voice quality
-- Explore Phase 2 features (more events, combat AI, inventory awareness)
+- Explore Phase 2 features (combat AI, more events, inventory awareness, memory/mood)
