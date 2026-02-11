@@ -138,11 +138,13 @@ bot.on('respawn', () => {
   }, 2000);
 });
 
-// Weather
+// Weather (debounced: 120s)
 bot.on('rain', () => {
   const isRaining = bot.isRaining;
   gameState.update({ isRaining });
-  sendGameEvent('weather_change', { weather: isRaining ? 'rain' : 'clear' });
+  if (shouldSendEvent('weather_change', 120_000)) {
+    sendGameEvent('weather_change', { weather: isRaining ? 'rain' : 'clear' });
+  }
 });
 
 // Player joins — auto-follow if it's our player

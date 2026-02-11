@@ -58,18 +58,27 @@ class AudioCapture:
         self._start_time = 0.0
 
     def start(self):
-        """Begin recording from default microphone."""
+        """Begin recording from microphone."""
         self._frames = []
         self._recording = True
         self._start_time = time.time()
+
+        # Find Focusrite input device, fall back to system default
+        device = None
+        for i, dev in enumerate(sd.query_devices()):
+            if "focusrite" in dev["name"].lower() and dev["max_input_channels"] > 0:
+                device = i
+                break
+
         self._stream = sd.InputStream(
             samplerate=SAMPLE_RATE,
             channels=CHANNELS,
             dtype="int16",
+            device=device,
             callback=self._callback,
         )
         self._stream.start()
-        logger.debug("Recording started")
+        logger.debug(f"Recording started (device: {device or 'default'})")
 
     def stop(self) -> Optional[bytes]:
         """Stop recording. Returns WAV bytes, or None if too short."""
@@ -224,13 +233,14 @@ class TTS:
         sd.wait()
 
     def _speak_pyttsx3(self, text: str):
-        if self._pyttsx_engine is None:
-            import pyttsx3
-            self._pyttsx_engine = pyttsx3.init()
-            self._pyttsx_engine.setProperty("rate", 175)
-
-        self._pyttsx_engine.say(text)
-        self._pyttsx_engine.runAndWait()
+        # Create a fresh engine each call — pyttsx3's COM objects
+        # deadlock when reused across asyncio executor threads
+        import pyttsx3
+        engine = pyttsx3.init()
+        engine.setProperty("rate", 175)
+        engine.say(text)
+        engine.runAndWait()
+        engine.stop()
 
 
 # ── Voice Pipeline ───────────────────────────────────────────────────────────
