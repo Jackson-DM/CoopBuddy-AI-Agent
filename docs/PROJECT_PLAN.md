@@ -42,7 +42,7 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] In-game chat echo
 - [x] Startup scripts + .env template
 - [x] GitHub repo: https://github.com/Jackson-DM/CoopBuddy-AI-Agent
-- [ ] **BLOCKED**: Anthropic API credits needed to test brain responses
+- [x] Anthropic API credits loaded — brain responds in character ✓
 - [ ] **TODO**: Debounce weather_change events
 - [ ] **TODO**: Test voice pipeline end-to-end
 - [ ] **TODO**: Test on normal difficulty with working brain

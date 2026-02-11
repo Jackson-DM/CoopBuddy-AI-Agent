@@ -87,23 +87,23 @@ Set up `.env`, installed all dependencies, got the bot into a live Minecraft ser
 
 ### Bugs Found & Not Yet Fixed
 - **weather_change spam**: `rain` event fires every ~10s, needs debouncing in `bot/bot.js`
-- **Claude API errors**: Anthropic account has no credits — all brain calls return 400. Fallback message works ("bruh my brain just lagged")
 
 ### Key Learnings
 - Bot WS client auto-reconnects with exponential backoff — worked seamlessly after crash
 - Python server survived bot disconnects and reconnects without restart
 - pyttsx3 TTS fallback initializes correctly on first use (comtypes SAPI5 setup)
+- Anthropic API credits are prepaid, not subscription — $5 goes very far with 150-token responses
+- Brain personality nails the vibe out of the box — Gen Z vernacular, emojis, stays in character when tested with off-the-wall messages
 
 ### Current State
 - **Bot**: In-game, following player, surviving on peaceful ✓
 - **WS Bridge**: Connected and relaying events ✓
-- **Brain**: Code works but no API credits — returns fallback message
+- **Brain**: WORKING — responds in character via in-game chat, ~2-3s response time ✓
 - **Voice**: Pipeline initialized, PTT key registered, untested end-to-end
 - **TTS**: pyttsx3 fallback ready, ElevenLabs needs API key
 
 ### Next Session
-- Add Anthropic API credits and test brain responses
 - Debounce weather_change events
 - Test voice pipeline (PTT → STT → brain → TTS)
-- Test on normal/hard difficulty once brain is responding
+- Test on normal/hard difficulty with working brain
 - Consider Phase 2 features based on how it feels
