@@ -63,8 +63,10 @@ async def handle_response(text: str, actions: list[dict], voice_pipeline: VoiceP
     tts_task = asyncio.create_task(voice_pipeline.tts.speak(clean))
     chat_task = asyncio.create_task(ws_server.send_chat(clean))
 
-    # Execute extracted actions
+    # Execute extracted actions (skip send_chat — already handled above)
     for action in actions:
+        if action["action"] == "send_chat":
+            continue
         await ws_server.send_action(action["action"], action.get("params", {}))
 
     await tts_task
