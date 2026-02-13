@@ -25,7 +25,13 @@
       "player_death": 60,
       "health_low": 45,
       "weather_change": 120,
-      "player_join": 10
+      "player_join": 10,
+      "health_critical": 30,
+      "night_fall": 300,
+      "dawn": 300,
+      "biome_change": 60,
+      "item_pickup": 10,
+      "creeper_nearby": 30
     },
     "max_queue_depth": 2
   }

@@ -119,6 +119,11 @@ class ConversationHistory:
             self._turns.pop(0)
 
 
+def _roman(n: int) -> str:
+    """Simple roman numeral for potion amplifiers (1-5)."""
+    return {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}.get(n, str(n))
+
+
 def _format_game_state(gs: dict) -> str:
     """Compact text block for context injection."""
     parts = []
@@ -138,6 +143,17 @@ def _format_game_state(gs: dict) -> str:
     if hostiles:
         mob_str = ", ".join(f"{m['name']}({m['distance']}m)" for m in hostiles[:3])
         parts.append(f"Hostiles:[{mob_str}]")
+    inv = gs.get("inventory", [])
+    if inv:
+        inv_str = ", ".join(f"{i['name']}x{i['count']}" for i in inv[:6])
+        parts.append(f"Inv:[{inv_str}]")
+    effects = gs.get("potionEffects", [])
+    if effects:
+        def _fmt_effect(e):
+            amp = e.get("amplifier", 0)
+            return e["name"] + (f" {_roman(amp + 1)}" if amp > 0 else "")
+        eff_str = ", ".join(_fmt_effect(e) for e in effects[:3])
+        parts.append(f"Effects:[{eff_str}]")
     if not parts:
         return ""
     return "[GAME STATE] " + " | ".join(parts)
@@ -259,5 +275,29 @@ def _build_event_prompt(event_type: str, data: dict) -> str:
     if event_type == "player_join":
         name = data.get("name", "someone")
         return f"[EVENT] {name} just joined the server."
+
+    if event_type == "health_critical":
+        hp = data.get("health", "?")
+        return f"[EVENT] My health is at {hp} — that's critical, we need to act fast."
+
+    if event_type == "night_fall":
+        return "[EVENT] It just turned night. Mobs are going to start spawning."
+
+    if event_type == "dawn":
+        return "[EVENT] Sun's coming up. We made it through the night."
+
+    if event_type == "biome_change":
+        frm = data.get("from", "somewhere")
+        to = data.get("to", "somewhere")
+        return f"[EVENT] We just crossed into a {to} biome (was {frm})."
+
+    if event_type == "item_pickup":
+        item = data.get("item", "something")
+        who = "I" if data.get("collector") == "bot" else "You"
+        return f"[EVENT] {who} just picked up {item}."
+
+    if event_type == "creeper_nearby":
+        dist = data.get("distance", "?")
+        return f"[EVENT] There's a creeper only {dist} blocks away from us."
 
     return f"[EVENT] {event_type}: {json.dumps(data)}"

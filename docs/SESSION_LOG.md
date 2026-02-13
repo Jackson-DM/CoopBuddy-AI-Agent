@@ -124,3 +124,39 @@ Set up `.env`, installed all dependencies, got the bot into a live Minecraft ser
 ### Next Session
 - Test on normal/hard difficulty with working brain
 - Explore Phase 2 features (combat AI, more events, inventory awareness, memory/mood)
+
+---
+
+## Session 4 — Phase 2a: Game Awareness
+**Date**: 2026-02-12
+**Status**: Complete
+
+### Overview
+Implemented Phase 2a — game awareness features. Unified cooldowns to be config-driven, added inventory and potion effect tracking, and added 6 new proactive event types (bringing total from 5 to 11).
+
+### Completed
+- **Cooldown unification**: All 11 event cooldowns now live in `config/settings.json` under `brain.cooldowns`. `bot.js` loads settings at startup and uses config values instead of hardcoded milliseconds.
+- **Inventory tracking**: `gameState.js` scans `bot.inventory.items()` every 5s, highlights notable items (diamonds, netherite, totems, elytra), includes equipped armor/offhand, and top 5 resources by stack count.
+- **Potion effects tracking**: `gameState.js` reads `bot.entity.effects` every 5s, resolves effect names via `bot.registry.effects`.
+- **Brain context**: `_format_game_state()` in `brain.py` now includes `Inv:[...]` and `Effects:[...]` lines when present (~15-20 extra tokens).
+- **6 new event listeners** in `bot.js`:
+  - `health_critical` (<=8 HP, 30s cooldown) — alongside existing `health_low` (<=6 HP)
+  - `night_fall` (time crosses 13000 ticks, 300s cooldown)
+  - `dawn` (time wraps from >22000 to <1000, 300s cooldown)
+  - `biome_change` (biome name changes, 60s cooldown, skips 'unknown')
+  - `creeper_nearby` (creeper within 8 blocks, 30s cooldown)
+  - `item_pickup` (notable items only, 10s cooldown, tracks bot + player pickups)
+- **6 new brain prompts** in `brain.py` `_build_event_prompt()` — natural language for each event type.
+
+### Files Modified
+- `config/settings.json` — 6 new cooldown entries
+- `bot/bot.js` — settings loader, config-driven cooldowns, module-level time/biome trackers, 6 new event checks, `playerCollect` listener
+- `bot/context/gameState.js` — `NOTABLE_ITEMS` set, `refreshInventory()`, `refreshPotionEffects()`, inventory/potionEffects in state + snapshot
+- `server/brain.py` — `_roman()` helper, inventory/effects in `_format_game_state()`, 6 new event prompts
+
+### No New Dependencies
+All APIs used are already available in mineflayer / Node built-ins.
+
+### Next Session
+- Test all 6 new events in-game (verification plan in Phase 2a design doc)
+- Phase 2b: combat AI with mineflayer-pvp

@@ -48,11 +48,18 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] ElevenLabs TTS integrated — custom voice, natural output ✓
 - [ ] **TODO**: Test on normal difficulty with working brain
 
-### Phase 2 — Full Game Awareness (Future)
-- Full game state: inventory, effects, dimension
-- 8+ proactive event types (player death, diamond found, night falls, biome change, creeper explosion, health critical)
+### Phase 2a — Game Awareness
+- [x] Cooldown unification — all cooldowns in `config/settings.json`, bot reads at startup
+- [x] Inventory tracking — notable items, equipped gear, top resources in game state
+- [x] Potion effects tracking — active effects with amplifier in game state
+- [x] 6 new event types: `health_critical`, `night_fall`, `dawn`, `biome_change`, `creeper_nearby`, `item_pickup`
+- [x] Brain prompts for all 6 new events
+- [x] 11 total proactive event types (was 5)
+
+### Phase 2b — Combat AI (Future)
 - Bot combat with mineflayer-pvp
-- Tunable cooldowns in config/
+- Threat prioritization
+- Flee/fight decision logic
 
 ### Phase 3 — Memory & Mood (Future)
 - Short-term mood state injected into system prompt dynamically

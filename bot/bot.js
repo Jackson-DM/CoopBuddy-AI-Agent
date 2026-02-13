@@ -7,11 +7,21 @@
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
 
+const fs = require('fs');
+const path = require('path');
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements } = require('mineflayer-pathfinder');
 const wsClient = require('./wsClient');
 const gameState = require('./context/gameState');
 const { followPlayer, stopFollowing } = require('./actions/movement');
+
+// ── Load settings ───────────────────────────────────────────────────────────
+
+const settings = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '..', 'config', 'settings.json'), 'utf8')
+);
+const COOLDOWNS = settings.brain.cooldowns;
+console.log('[Bot] Loaded cooldowns:', COOLDOWNS);
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -63,7 +73,36 @@ bot.once('spawn', () => {
   // Start periodic game state snapshots
   setInterval(() => {
     gameState.refreshEntities(bot);
+    gameState.refreshInventory(bot);
+    gameState.refreshPotionEffects(bot);
     updatePlayerState();
+
+    // ── Time-of-day transitions ──
+    const currentTime = bot.time.timeOfDay;
+    if (_lastTimeOfDay < 13000 && currentTime >= 13000 && shouldSendEvent('night_fall', COOLDOWNS.night_fall * 1000)) {
+      sendGameEvent('night_fall', { time: currentTime });
+    }
+    if (_lastTimeOfDay > 22000 && currentTime < 1000 && shouldSendEvent('dawn', COOLDOWNS.dawn * 1000)) {
+      sendGameEvent('dawn', { time: currentTime });
+    }
+    _lastTimeOfDay = currentTime;
+
+    // ── Biome change ──
+    const currentBiome = getBiomeName();
+    if (currentBiome !== 'unknown' && _lastBiome !== 'unknown' && _lastBiome !== '' && currentBiome !== _lastBiome) {
+      if (shouldSendEvent('biome_change', COOLDOWNS.biome_change * 1000)) {
+        sendGameEvent('biome_change', { from: _lastBiome, to: currentBiome });
+      }
+    }
+    _lastBiome = currentBiome;
+
+    // ── Creeper proximity alert ──
+    const nearbyCreepers = gameState.state.nearbyHostile.filter(
+      (m) => m.name === 'creeper' && m.distance <= 8
+    );
+    if (nearbyCreepers.length > 0 && shouldSendEvent('creeper_nearby', COOLDOWNS.creeper_nearby * 1000)) {
+      sendGameEvent('creeper_nearby', { distance: nearbyCreepers[0].distance });
+    }
 
     const snapshot = gameState.getSnapshot();
     sendGameEvent('game_state', snapshot);
@@ -81,6 +120,11 @@ function shouldSendEvent(eventType, cooldownMs) {
   lastEventSent[eventType] = now;
   return true;
 }
+
+// ── Module-level trackers for time/biome transitions ────────────────────────
+
+let _lastTimeOfDay = 0;
+let _lastBiome = '';
 
 // ── Game event listeners ────────────────────────────────────────────────────
 
@@ -111,7 +155,10 @@ bot.on('health', () => {
     playerFood: bot.food,
   });
 
-  if (bot.health <= 6 && bot.health > 0 && shouldSendEvent('health_low', 45_000)) {
+  if (bot.health <= 8 && bot.health > 0 && shouldSendEvent('health_critical', COOLDOWNS.health_critical * 1000)) {
+    sendGameEvent('health_critical', { health: bot.health });
+  }
+  if (bot.health <= 6 && bot.health > 0 && shouldSendEvent('health_low', COOLDOWNS.health_low * 1000)) {
     sendGameEvent('health_low', { health: bot.health });
   }
 });
@@ -119,7 +166,7 @@ bot.on('health', () => {
 // Death (debounced: 60s)
 bot.on('death', () => {
   gameState.update({ lastDeath: Date.now() });
-  if (shouldSendEvent('player_death', 60_000)) {
+  if (shouldSendEvent('player_death', COOLDOWNS.player_death * 1000)) {
     sendGameEvent('player_death', { cause: 'Bot died' });
   }
 });
@@ -142,7 +189,7 @@ bot.on('respawn', () => {
 bot.on('rain', () => {
   const isRaining = bot.isRaining;
   gameState.update({ isRaining });
-  if (shouldSendEvent('weather_change', 120_000)) {
+  if (shouldSendEvent('weather_change', COOLDOWNS.weather_change * 1000)) {
     sendGameEvent('weather_change', { weather: isRaining ? 'rain' : 'clear' });
   }
 });
@@ -160,6 +207,25 @@ bot.on('playerJoined', (player) => {
         console.log(`[Bot] ${PLAYER_NAME} joined — following`);
       }
     }, 2000);
+  }
+});
+
+// Notable item pickups
+bot.on('playerCollect', (collector, collected) => {
+  if (!collected || !collector) return;
+  // Only track pickups by the bot or the player
+  const collectorName = collector.username || (collector === bot.entity ? BOT_USERNAME : null);
+  if (collectorName !== BOT_USERNAME && collectorName !== PLAYER_NAME) return;
+
+  const item = collected.getDroppedItem && collected.getDroppedItem();
+  if (!item) return;
+  if (!gameState.NOTABLE_ITEMS.has(item.name)) return;
+
+  if (shouldSendEvent('item_pickup', COOLDOWNS.item_pickup * 1000)) {
+    sendGameEvent('item_pickup', {
+      item: item.name,
+      collector: collectorName === BOT_USERNAME ? 'bot' : 'player',
+    });
   }
 });
 

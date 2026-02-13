@@ -22,6 +22,10 @@ const state = {
   nearbyHostile: [],   // [{ name, distance, position }]
   nearbyPassive: [],
 
+  // Inventory & effects
+  inventory: [],       // [{ name, count }]
+  potionEffects: [],   // [{ name, amplifier }]
+
   // Session events
   lastDeath: null,
   lastRespawn: null,
@@ -41,6 +45,8 @@ function getSnapshot() {
     isRaining: state.isRaining,
     nearbyHostile: state.nearbyHostile.slice(0, 5),   // cap at 5 for context
     nearbyPassive: state.nearbyPassive.slice(0, 3),
+    inventory: state.inventory,
+    potionEffects: state.potionEffects,
   };
 }
 
@@ -89,6 +95,76 @@ function refreshEntities(bot, maxDistance = 20) {
   state.nearbyPassive = passives;
 }
 
+// ── Notable items (for inventory highlights and pickup events) ──────────────
+
+const NOTABLE_ITEMS = new Set([
+  'diamond', 'diamond_sword', 'diamond_pickaxe', 'diamond_axe', 'diamond_shovel',
+  'diamond_helmet', 'diamond_chestplate', 'diamond_leggings', 'diamond_boots',
+  'netherite_ingot', 'netherite_sword', 'netherite_pickaxe', 'netherite_axe',
+  'netherite_helmet', 'netherite_chestplate', 'netherite_leggings', 'netherite_boots',
+  'totem_of_undying', 'elytra', 'enchanted_golden_apple', 'nether_star',
+  'trident', 'beacon', 'dragon_egg', 'end_crystal',
+]);
+
+/**
+ * Refresh inventory snapshot from bot.
+ * Highlights notable items + equipped gear + top resources.
+ * @param {object} bot - mineflayer bot instance
+ */
+function refreshInventory(bot) {
+  const items = bot.inventory.items();
+  const notable = [];
+  const resources = [];
+
+  for (const item of items) {
+    const entry = { name: item.name, count: item.count };
+    if (NOTABLE_ITEMS.has(item.name)) {
+      notable.push(entry);
+    } else {
+      resources.push(entry);
+    }
+  }
+
+  // Add equipped armor + offhand
+  const armorSlots = [5, 6, 7, 8, 45]; // helmet, chest, legs, boots, offhand
+  for (const slot of armorSlots) {
+    const item = bot.inventory.slots[slot];
+    if (item) {
+      notable.push({ name: item.name, count: item.count });
+    }
+  }
+
+  // Sort resources by count descending, take top 5
+  resources.sort((a, b) => b.count - a.count);
+  const compact = [...notable, ...resources.slice(0, 5)];
+
+  state.inventory = compact;
+}
+
+/**
+ * Refresh active potion effects from bot entity.
+ * @param {object} bot - mineflayer bot instance
+ */
+function refreshPotionEffects(bot) {
+  const effects = [];
+  const entityEffects = bot.entity.effects;
+  if (!entityEffects || entityEffects.length === 0) {
+    state.potionEffects = [];
+    return;
+  }
+
+  for (const effect of entityEffects) {
+    let name = `effect_${effect.id}`;
+    try {
+      const reg = bot.registry.effects[effect.id];
+      if (reg && reg.name) name = reg.name;
+    } catch (e) { /* fallback to id */ }
+    effects.push({ name, amplifier: effect.amplifier });
+  }
+
+  state.potionEffects = effects;
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function _formatTime(ticks) {
@@ -107,4 +183,7 @@ const HOSTILE_MOBS = new Set([
   'warden', 'piglin_brute', 'hoglin', 'zoglin', 'slime', 'magma_cube',
 ]);
 
-module.exports = { getSnapshot, update, refreshEntities, HOSTILE_MOBS, state };
+module.exports = {
+  getSnapshot, update, refreshEntities, refreshInventory, refreshPotionEffects,
+  HOSTILE_MOBS, NOTABLE_ITEMS, state,
+};
