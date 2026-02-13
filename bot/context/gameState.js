@@ -148,12 +148,12 @@ function refreshInventory(bot) {
 function refreshPotionEffects(bot) {
   const effects = [];
   const entityEffects = bot.entity.effects;
-  if (!entityEffects || entityEffects.length === 0) {
+  if (!entityEffects || Object.keys(entityEffects).length === 0) {
     state.potionEffects = [];
     return;
   }
 
-  for (const effect of entityEffects) {
+  for (const effect of Object.values(entityEffects)) {
     let name = `effect_${effect.id}`;
     try {
       const reg = bot.registry.effects[effect.id];
