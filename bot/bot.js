@@ -134,13 +134,15 @@ bot.on('chat', (username, message) => {
   sendGameEvent('player_message', { username, message });
 });
 
-// Hostile mob spawns within 16 blocks
+// Hostile mob spawns within 16 blocks (debounced)
 bot.on('entitySpawn', (entity) => {
   if (entity.type !== 'mob') return;
   if (!gameState.HOSTILE_MOBS.has(entity.name)) return;
 
   const dist = bot.entity.position.distanceTo(entity.position);
   if (dist > 16) return;
+
+  if (!shouldSendEvent('mob_spawn', COOLDOWNS.mob_spawn * 1000)) return;
 
   sendGameEvent('mob_spawn', {
     name: entity.name,
