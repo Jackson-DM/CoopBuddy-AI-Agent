@@ -55,9 +55,13 @@ async def handle_response(text: str, actions: list[dict], voice_pipeline: VoiceP
     if not text:
         return
 
+    # Collapse newlines into a single line — prevents mineflayer from splitting
+    # into multiple chat messages (which causes TTS to only speak the last one)
+    clean = " ".join(text.split())
+
     # TTS and chat in parallel
-    tts_task = asyncio.create_task(voice_pipeline.tts.speak(text))
-    chat_task = asyncio.create_task(ws_server.send_chat(text))
+    tts_task = asyncio.create_task(voice_pipeline.tts.speak(clean))
+    chat_task = asyncio.create_task(ws_server.send_chat(clean))
 
     # Execute extracted actions
     for action in actions:
