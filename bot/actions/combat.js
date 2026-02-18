@@ -9,6 +9,28 @@ const { goals } = require('mineflayer-pathfinder');
 const { GoalFollow } = goals;
 const gameState = require('../context/gameState');
 
+// Best-to-worst melee weapons for auto-equip
+const WEAPON_PRIORITY = [
+  'netherite_sword', 'diamond_sword', 'iron_sword', 'stone_sword', 'golden_sword', 'wooden_sword',
+  'netherite_axe',   'diamond_axe',   'iron_axe',   'stone_axe',   'golden_axe',   'wooden_axe',
+];
+
+/**
+ * Equip the best melee weapon in inventory, if any.
+ * Falls back to fists silently.
+ */
+async function _equipBestWeapon(bot) {
+  for (const name of WEAPON_PRIORITY) {
+    const item = bot.inventory.items().find(i => i.name === name);
+    if (item) {
+      await bot.equip(item, 'hand');
+      console.log(`[Combat] Equipped ${item.name}`);
+      return;
+    }
+  }
+  console.log('[Combat] No weapon found — using fists');
+}
+
 // Threat priority — higher = more dangerous. Creeper = always flee.
 const THREAT_PRIORITY = {
   creeper: 99,   // never melee
@@ -62,16 +84,19 @@ function attackNearest(bot, mobName) {
   combatActive = true;
   currentTarget = entity;
 
-  try {
-    bot.pvp.attack(entity);
-    console.log(`[Combat] Attacking ${entity.name} (${Math.round(bot.entity.position.distanceTo(entity.position))} blocks)`);
-    return { success: true, target: entity.name };
-  } catch (e) {
-    combatActive = false;
-    currentTarget = null;
-    console.log(`[Combat] Failed to attack: ${e.message}`);
-    return { success: false, reason: e.message };
-  }
+  const dist = Math.round(bot.entity.position.distanceTo(entity.position));
+  console.log(`[Combat] Attacking ${entity.name} (${dist} blocks)`);
+
+  // Equip weapon first, then hand off to pvp plugin (both async, fire-and-forget)
+  _equipBestWeapon(bot)
+    .then(() => bot.pvp.attack(entity))
+    .catch(e => {
+      combatActive = false;
+      currentTarget = null;
+      console.log(`[Combat] Attack failed: ${e.message}`);
+    });
+
+  return { success: true, target: entity.name };
 }
 
 /**
@@ -188,7 +213,7 @@ function _findTarget(bot, mobName) {
 
 // Listen for pvp stop to clear state
 function registerPvpListeners(bot) {
-  bot.pvp.on('stoppedAttacking', () => {
+  bot.on('stoppedAttacking', () => {
     combatActive = false;
     currentTarget = null;
   });

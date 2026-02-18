@@ -33,6 +33,9 @@ const BOT_USERNAME = process.env.BOT_USERNAME || 'CoopBuddy';
 const PLAYER_NAME = process.env.PLAYER_NAME || 'Jackson';
 const MC_VERSION = '1.20.4';
 
+// Set on spawn — used by action handlers (e.g. eat)
+let mcData = null;
+
 // ── Create bot ──────────────────────────────────────────────────────────────
 
 console.log(`[Bot] Connecting to ${MC_HOST}:${MC_PORT} as ${BOT_USERNAME}...`);
@@ -51,7 +54,7 @@ bot.loadPlugin(pathfinder);
 bot.loadPlugin(pvp);
 
 bot.once('spawn', () => {
-  const mcData = require('minecraft-data')(bot.version);
+  mcData = require('minecraft-data')(bot.version);
   const moves = new Movements(bot, mcData);
   moves.canDig = false;       // Don't grief the world
   moves.allowParkour = true;
@@ -133,11 +136,13 @@ let _lastTimeOfDay = 0;
 let _lastBiome = '';
 let _lastRespawnTime = 0;
 let _lastHealth = 20;
+let _lastFood = 20;
 
 // ── Game event listeners ────────────────────────────────────────────────────
 
-// Chat messages (from players, not the bot itself)
+// Chat messages (real player messages only — filter bot and system/empty-username messages)
 bot.on('chat', (username, message) => {
+  if (!username) return;              // system messages (death, join, etc.) have no username
   if (username === bot.username) return;
   sendGameEvent('player_message', { username, message });
 });
@@ -160,10 +165,17 @@ bot.on('entitySpawn', (entity) => {
 // Health changes — only alert on actual drops, mutually exclusive, skip post-respawn
 bot.on('health', () => {
   const currentHealth = bot.health;
+  const currentFood = bot.food;
   gameState.update({
     playerHealth: currentHealth,
-    playerFood: bot.food,
+    playerFood: currentFood,
   });
+
+  // Food low — fire periodically while hungry (cooldown prevents spam)
+  if (currentFood < 14 && shouldSendEvent('food_low', COOLDOWNS.food_low * 1000)) {
+    sendGameEvent('food_low', { food: Math.round(currentFood) });
+  }
+  _lastFood = currentFood;
 
   // Only alert when health actually decreased
   if (currentHealth >= _lastHealth) {
@@ -281,7 +293,7 @@ wsClient.onAction('look_at', (params) => {
 });
 
 wsClient.onAction('eat', async () => {
-  const food = bot.inventory.items().find(i => i.foodRecovery > 0);
+  const food = bot.inventory.items().find(i => mcData && i.name in mcData.foodsByName);
   if (!food) {
     console.log('[Bot] No food in inventory');
     return;

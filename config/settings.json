@@ -33,7 +33,8 @@
       "item_pickup": 10,
       "creeper_nearby": 30,
       "under_attack": 15,
-      "mob_killed": 10
+      "mob_killed": 10,
+      "food_low": 60
     },
     "max_queue_depth": 2
   }

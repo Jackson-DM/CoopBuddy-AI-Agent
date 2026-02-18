@@ -24,6 +24,16 @@ function followPlayer(bot, playerName) {
   stopFollowing(bot);
 
   const _updateGoal = () => {
+    // During combat, keep pathfinding toward the pvp target instead of the player
+    if (bot.pvp && bot.pvp.target) {
+      try {
+        bot.pathfinder.setGoal(new GoalFollow(bot.pvp.target, 2), true);
+      } catch (e) {
+        // pvp target may have despawned
+      }
+      return;
+    }
+
     const player = bot.players[playerName];
     if (!player || !player.entity) {
       // Player not visible yet — try again next tick

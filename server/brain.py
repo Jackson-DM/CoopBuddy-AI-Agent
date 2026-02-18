@@ -221,6 +221,18 @@ class Brain:
             logger.debug(f"Suppressed proactive event '{event_type}' — voice active")
             return None
 
+        # Death clears any queued events — combat/health events before death are stale
+        if event_type == "player_death":
+            cleared = 0
+            while not self._proactive_queue.empty():
+                try:
+                    self._proactive_queue.get_nowait()
+                    cleared += 1
+                except asyncio.QueueEmpty:
+                    break
+            if cleared:
+                logger.debug(f"Cleared {cleared} queued events on player_death")
+
         # Per-event cooldown
         cooldown = COOLDOWNS.get(event_type, 30)
         now = time.time()
@@ -282,6 +294,10 @@ def _build_event_prompt(event_type: str, data: dict) -> str:
     if event_type == "health_low":
         hp = data.get("health", "?")
         return f"[EVENT] My health just dropped to {hp} hearts."
+
+    if event_type == "food_low":
+        food = data.get("food", "?")
+        return f"[EVENT] My food bar is at {food}/20 — I need to eat something."
 
     if event_type == "weather_change":
         weather = data.get("weather", "unknown")

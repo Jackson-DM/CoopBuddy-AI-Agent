@@ -109,13 +109,18 @@ class WSServer:
             pass  # heartbeat acknowledged
 
         elif msg_type == "game_event":
-            try:
-                await self._on_game_event(msg)
-            except Exception as e:
-                logger.error(f"Error in game_event handler: {e}", exc_info=True)
+            # Fire as a background task so the message loop stays responsive to pings
+            asyncio.create_task(self._run_game_event(msg))
 
         else:
             logger.debug(f"Unhandled message type: {msg_type}")
+
+    async def _run_game_event(self, msg: dict):
+        """Background task wrapper for game event handler — isolates errors from message loop."""
+        try:
+            await self._on_game_event(msg)
+        except Exception as e:
+            logger.error(f"Error in game_event handler: {e}", exc_info=True)
 
     async def _send(self, msg: dict) -> bool:
         if self._connection is None:
