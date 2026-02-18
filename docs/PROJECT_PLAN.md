@@ -67,6 +67,14 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] 2 new events: `under_attack` (15s), `mob_killed` (10s)
 - [x] Entity ID tracking in game state for targeting
 - [x] 13 total proactive event types (was 11)
+- [x] **Bug fix**: auto-equip best weapon before `bot.pvp.attack()` — pvp plugin doesn't equip weapons
+- [x] **Bug fix**: movement interval actively pathfinds toward pvp target during combat (was overwriting pvp goal)
+- [x] **Bug fix**: `mcData` lifted to module scope; eat uses `foodsByName` (not `foodRecovery`)
+- [x] **Bug fix**: pong disconnect cycling — game events fired as `asyncio.create_task` to unblock message loop
+- [x] **Bug fix**: death chat system messages filtered (`!username` check) — no longer trigger `brain.think()`
+- [x] **Bug fix**: proactive queue cleared on `player_death` — prevents stale event chain-fire
+- [x] `food_low` event — fires when food < 14 (60s cooldown), brain proactively eats
+- [x] 14 total proactive event types
 
 ### Phase 3 — Memory & Mood (Future)
 - Short-term mood state injected into system prompt dynamically

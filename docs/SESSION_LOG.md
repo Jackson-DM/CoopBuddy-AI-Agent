@@ -210,3 +210,56 @@ Fixed two remaining Phase 2a bugs (biome detection, eat action) and implemented 
 ### Next Session
 - Test combat on normal difficulty (auto-defend, attack command, flee, creeper flee)
 - Phase 3: Memory & mood system
+
+---
+
+## Session 6 — Phase 2b Bug Fixes & Testing
+**Date**: 2026-02-18
+**Status**: Complete
+
+### Overview
+First live test of Phase 2b combat. Found and fixed multiple bugs across combat, WebSocket stability, eating, and death event handling.
+
+### Bugs Found & Fixed
+
+1. **`item.foodRecovery` undefined** — mineflayer item objects don't expose `foodRecovery` directly. The eat handler `bot.inventory.items().find(i => i.foodRecovery > 0)` always returned nothing. Fixed by lifting `mcData` to module scope (was scoped inside the `spawn` callback) and using `mcData.foodsByName` for the lookup.
+
+2. **mineflayer-pvp doesn't equip weapons** — `bot.pvp.attack(entity)` calls `bot.attack()` raw with whatever is currently held. Bot was punching bare-fisted every fight. Fixed by adding `_equipBestWeapon(bot)` in `combat.js` which scans inventory for the best sword/axe (netherite → diamond → iron → stone → golden → wooden) and equips it before handing off to pvp.
+
+3. **Follow interval overriding pvp pathfinding** — `movement.js` runs `setInterval` every 500ms setting a `GoalFollow` for the player. When `bot.pvp.attack()` set its own `GoalFollow` for the mob, the follow interval overwrote it 500ms later — bot stood still instead of chasing mobs. Fixed by making the interval actively pathfind toward `bot.pvp.target` during combat instead of yielding silently.
+
+4. **Pong disconnect cycling** — `ws_server.py` awaited game event handlers inline inside `_dispatch`. Claude API calls take 2-3s, blocking the message loop. Bot's 15s ping timeout would eventually fire and terminate the connection. Fixed by firing game events as `asyncio.create_task` so the message loop (and ping/pong) stay responsive regardless of brain latency.
+
+5. **Death message triggering `brain.think()`** — Minecraft death chat messages (e.g. `"JaxieJ was blown up by Creeper"`) are system messages that mineflayer fires via `bot.on('chat')` with an empty username. The old filter only skipped the bot's own messages, so death messages hit the `player_message` path and called `brain.think()` — concurrently with the `player_death` proactive event. Two concurrent Claude calls, both potentially hitting rate limits, both outputting the error fallback. Fixed by filtering `!username` in the chat handler.
+
+6. **"bruh my brain just lagged" spam on death** — Multiple death-related events (`under_attack`, `health_critical`, `player_death`) queued up and processed sequentially after death. Fixed by clearing the proactive queue when `player_death` fires so stale combat events are discarded.
+
+7. **`bot.pvp.on` is not a function** — `registerPvpListeners` was calling `bot.pvp.on('stoppedAttacking', ...)`. The `stoppedAttacking` event is emitted on `bot`, not `bot.pvp`. Fixed to `bot.on('stoppedAttacking', ...)`. (Was already patched in memory from Session 5.)
+
+### New Feature
+- **`food_low` event** — fires when `bot.food < 14`, rate-limited to 60s cooldown. Bot receives `[EVENT] My food bar is at N/20 — I need to eat something.` and the system prompt already instructs it to embed `[ACTION:eat]` proactively. Brain now eats without being told.
+
+### Files Modified
+- `bot/actions/combat.js` — `_equipBestWeapon()` + call before `bot.pvp.attack()`
+- `bot/actions/movement.js` — pathfind toward `bot.pvp.target` during combat
+- `bot/bot.js` — module-level `mcData`, `foodsByName` eat lookup, `_lastFood` tracker, `food_low` event, `!username` chat filter
+- `server/ws_server.py` — `asyncio.create_task` for game events, `_run_game_event` wrapper
+- `server/brain.py` — clear proactive queue on `player_death`, `food_low` event prompt
+- `config/settings.json` — `food_low: 60` cooldown
+
+### Combat — Partially Verified
+- Bot equips weapon ✓
+- Bot chases and swings at mobs ✓
+- Bot got stuck on terrain inside structure (pathfinding limitation, not a bug)
+- Auto-flee from creeper — not yet confirmed
+- `food_low` proactive eating — not yet confirmed
+
+### Current State
+- **Combat**: Weapon equip + movement working. Auto-defend fires. Further testing needed on normal difficulty.
+- **Stability**: Pong disconnect cycling resolved. Death event spam resolved.
+- **Food**: Proactive `food_low` event added; eat action confirmed working when triggered manually.
+
+### Next Session
+- Confirm auto-flee from creeper
+- Confirm `food_low` proactive eating
+- Phase 3: Memory & mood system
