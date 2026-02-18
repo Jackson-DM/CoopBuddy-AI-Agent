@@ -52,16 +52,23 @@ RESPONSE FORMAT:
 - Keep responses SHORT — 1-2 sentences max. This is voice chat, not an essay.
 - Sound like you're actually talking. Use contractions, fragments, casual speech.
 - You can embed actions in your response using tags like [ACTION:follow_player:PlayerName] or [ACTION:send_chat:message] — these get parsed out before TTS.
+- Use [ACTION:eat] when your food bar is low (below 14) and you have food in inventory. Eat proactively — don't wait to be told.
+- Combat actions: [ACTION:attack_mob:zombie] to attack a specific mob type, [ACTION:attack_mob] for nearest hostile, [ACTION:flee] to run to the player, [ACTION:stop_attack] to disengage.
+- You auto-defend when hit — no need to manually trigger combat every time. But you can override: tell the player you're fighting back, or call flee if things look bad.
+- Creepers are terrifying — always flee from them, never melee. Low HP? Flee first, talk tough later.
 
 GAME STATE:
-- You'll receive [GAME STATE] blocks with current health, biome, nearby mobs, etc.
+- You'll receive [GAME STATE] blocks with YOUR current health, food, biome, nearby mobs, etc.
+- The HP, Food, Inv, and Effects are YOUR stats — you are the one playing alongside the player.
+- Distances are in blocks (Minecraft's unit). Say "blocks" not "meters".
 - Reference this naturally — "yo we're getting low on health" not "I notice your health is at 6".
 - React to danger naturally — creeper nearby? Sound nervous. Full diamond? Get hyped.
 
 PROACTIVE EVENTS:
 - When you receive game events (mob spawns, deaths, weather), react naturally and briefly.
 - Don't repeat the same reaction. Vary your responses.
-- Death reactions should be empathetic but funny — "bro... not again" vibes."""
+- Death reactions should be empathetic but funny — "bro... not again" vibes.
+- "I died" means YOU died, not the player. The player is a separate person."""
 
 # ── Action parsing ───────────────────────────────────────────────────────────
 
@@ -86,6 +93,14 @@ def _extract_actions(text: str) -> tuple[str, list[dict]]:
                 actions.append({"action": "look_at", "params": {
                     "x": float(parts[0]), "y": float(parts[1]), "z": float(parts[2])
                 }})
+        elif action_type == "eat":
+            actions.append({"action": "eat", "params": {}})
+        elif action_type == "attack_mob":
+            actions.append({"action": "attack_mob", "params": {"name": param if param else None}})
+        elif action_type == "flee":
+            actions.append({"action": "flee", "params": {}})
+        elif action_type == "stop_attack":
+            actions.append({"action": "stop_attack", "params": {}})
     clean = _ACTION_PATTERN.sub("", text).strip()
     return clean, actions
 
@@ -141,7 +156,7 @@ def _format_game_state(gs: dict) -> str:
         parts.append("Raining")
     hostiles = gs.get("nearbyHostile", [])
     if hostiles:
-        mob_str = ", ".join(f"{m['name']}({m['distance']}m)" for m in hostiles[:3])
+        mob_str = ", ".join(f"{m['name']}({m['distance']}blk)" for m in hostiles[:3])
         parts.append(f"Hostiles:[{mob_str}]")
     inv = gs.get("inventory", [])
     if inv:
@@ -299,5 +314,15 @@ def _build_event_prompt(event_type: str, data: dict) -> str:
     if event_type == "creeper_nearby":
         dist = data.get("distance", "?")
         return f"[EVENT] There's a creeper only {dist} blocks away from us."
+
+    if event_type == "under_attack":
+        attacker = data.get("attacker", "something")
+        hp = data.get("health", "?")
+        action = data.get("action_taken", "nothing")
+        return f"[EVENT] I'm being attacked by a {attacker}! HP: {hp}. I auto-{action}ed."
+
+    if event_type == "mob_killed":
+        mob = data.get("mob", "something")
+        return f"[EVENT] Just took out a {mob}. Nice."
 
     return f"[EVENT] {event_type}: {json.dumps(data)}"

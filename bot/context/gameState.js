@@ -68,16 +68,19 @@ function refreshEntities(bot, maxDistance = 20) {
   const passives = [];
   const botPos = bot.entity.position;
 
+  const LIVING_TYPES = new Set(['hostile', 'mob', 'animal', 'ambient', 'water_creature', 'player']);
+
   for (const entity of Object.values(bot.entities)) {
     if (!entity || !entity.position || entity === bot.entity) continue;
-    if (entity.type !== 'mob') continue;
+    if (!LIVING_TYPES.has(entity.type)) continue;
 
     const dist = botPos.distanceTo(entity.position);
     if (dist > maxDistance) continue;
 
     const entry = {
-      name: entity.name || entity.type,
+      name: entity.name || entity.displayName || entity.type,
       distance: Math.round(dist),
+      id: entity.id,
     };
 
     if (HOSTILE_MOBS.has(entity.name)) {

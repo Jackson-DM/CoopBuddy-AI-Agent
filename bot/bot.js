@@ -11,9 +11,11 @@ const fs = require('fs');
 const path = require('path');
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements } = require('mineflayer-pathfinder');
+const pvp = require('mineflayer-pvp').plugin;
 const wsClient = require('./wsClient');
 const gameState = require('./context/gameState');
 const { followPlayer, stopFollowing } = require('./actions/movement');
+const combat = require('./actions/combat');
 
 // ── Load settings ───────────────────────────────────────────────────────────
 
@@ -43,9 +45,10 @@ const bot = mineflayer.createBot({
   auth: 'offline',
 });
 
-// ── Load pathfinder ─────────────────────────────────────────────────────────
+// ── Load plugins ────────────────────────────────────────────────────────────
 
 bot.loadPlugin(pathfinder);
+bot.loadPlugin(pvp);
 
 bot.once('spawn', () => {
   const mcData = require('minecraft-data')(bot.version);
@@ -56,6 +59,9 @@ bot.once('spawn', () => {
   bot.pathfinder.setMovements(moves);
 
   console.log(`[Bot] Spawned at ${bot.entity.position}`);
+
+  // Register pvp listeners for combat state tracking
+  combat.registerPvpListeners(bot);
 
   // Send spawn event to Python
   sendGameEvent('bot_joined', {
@@ -125,6 +131,8 @@ function shouldSendEvent(eventType, cooldownMs) {
 
 let _lastTimeOfDay = 0;
 let _lastBiome = '';
+let _lastRespawnTime = 0;
+let _lastHealth = 20;
 
 // ── Game event listeners ────────────────────────────────────────────────────
 
@@ -136,7 +144,6 @@ bot.on('chat', (username, message) => {
 
 // Hostile mob spawns within 16 blocks (debounced)
 bot.on('entitySpawn', (entity) => {
-  if (entity.type !== 'mob') return;
   if (!gameState.HOSTILE_MOBS.has(entity.name)) return;
 
   const dist = bot.entity.position.distanceTo(entity.position);
@@ -150,18 +157,30 @@ bot.on('entitySpawn', (entity) => {
   });
 });
 
-// Health changes — alert when low (debounced: 45s)
+// Health changes — only alert on actual drops, mutually exclusive, skip post-respawn
 bot.on('health', () => {
+  const currentHealth = bot.health;
   gameState.update({
-    playerHealth: bot.health,
+    playerHealth: currentHealth,
     playerFood: bot.food,
   });
 
-  if (bot.health <= 8 && bot.health > 0 && shouldSendEvent('health_critical', COOLDOWNS.health_critical * 1000)) {
-    sendGameEvent('health_critical', { health: bot.health });
+  // Only alert when health actually decreased
+  if (currentHealth >= _lastHealth) {
+    _lastHealth = currentHealth;
+    return;
   }
-  if (bot.health <= 6 && bot.health > 0 && shouldSendEvent('health_low', COOLDOWNS.health_low * 1000)) {
-    sendGameEvent('health_low', { health: bot.health });
+  _lastHealth = currentHealth;
+
+  // Skip health alerts for 5s after respawn
+  if (Date.now() - _lastRespawnTime < 5000) return;
+  if (currentHealth <= 0) return;
+
+  // Mutually exclusive: critical takes priority over low
+  if (currentHealth <= 6 && shouldSendEvent('health_critical', COOLDOWNS.health_critical * 1000)) {
+    sendGameEvent('health_critical', { health: Math.round(currentHealth) });
+  } else if (currentHealth <= 10 && shouldSendEvent('health_low', COOLDOWNS.health_low * 1000)) {
+    sendGameEvent('health_low', { health: Math.round(currentHealth) });
   }
 });
 
@@ -175,7 +194,9 @@ bot.on('death', () => {
 
 // Respawn — auto re-follow after delay
 bot.on('respawn', () => {
-  gameState.update({ lastRespawn: Date.now() });
+  _lastRespawnTime = Date.now();
+  _lastHealth = 20;
+  gameState.update({ lastRespawn: _lastRespawnTime });
   console.log('[Bot] Respawned');
 
   setTimeout(() => {
@@ -259,6 +280,92 @@ wsClient.onAction('look_at', (params) => {
   }
 });
 
+wsClient.onAction('eat', async () => {
+  const food = bot.inventory.items().find(i => i.foodRecovery > 0);
+  if (!food) {
+    console.log('[Bot] No food in inventory');
+    return;
+  }
+  try {
+    await bot.equip(food, 'hand');
+    await bot.consume();
+    console.log(`[Bot] Ate ${food.name}`);
+  } catch (e) {
+    console.log(`[Bot] Failed to eat: ${e.message}`);
+  }
+});
+
+wsClient.onAction('attack_mob', (params) => {
+  const mobName = params.name || null;
+  const result = combat.attackNearest(bot, mobName);
+  if (!result.success) {
+    console.log(`[Bot] Cannot attack: ${result.reason}`);
+    if (result.reason === 'health_too_low') {
+      combat.fleeToPlayer(bot, PLAYER_NAME);
+    }
+  }
+});
+
+wsClient.onAction('flee', () => {
+  combat.fleeToPlayer(bot, PLAYER_NAME);
+});
+
+wsClient.onAction('stop_attack', () => {
+  combat.stopCombat(bot);
+  console.log('[Bot] Stopped combat');
+});
+
+// ── Auto-defend: fight back when hit by a mob ────────────────────────────────
+
+bot.on('entityHurt', (entity) => {
+  if (entity !== bot.entity) return;
+
+  // Find who hit us — check for nearest hostile within 5 blocks
+  const botPos = bot.entity.position;
+  let attacker = null;
+  let closestDist = 5;
+
+  for (const e of Object.values(bot.entities)) {
+    if (!e || !e.position || e === bot.entity) continue;
+    if (!gameState.HOSTILE_MOBS.has(e.name)) continue;
+    const dist = botPos.distanceTo(e.position);
+    if (dist < closestDist) {
+      closestDist = dist;
+      attacker = e;
+    }
+  }
+
+  if (!attacker) return;
+
+  const action = combat.onHurt(bot, attacker, PLAYER_NAME);
+  if (action) {
+    if (shouldSendEvent('under_attack', COOLDOWNS.under_attack * 1000)) {
+      sendGameEvent('under_attack', {
+        attacker: attacker.name,
+        health: Math.round(bot.health),
+        action_taken: action,
+      });
+    }
+  }
+});
+
+// ── Mob killed event ─────────────────────────────────────────────────────────
+
+bot.on('entityDead', (entity) => {
+  if (!entity || !gameState.HOSTILE_MOBS.has(entity.name)) return;
+
+  // Only report if we were fighting this mob or it's nearby
+  const dist = bot.entity.position.distanceTo(entity.position);
+  if (dist > 10) return;
+
+  if (shouldSendEvent('mob_killed', COOLDOWNS.mob_killed * 1000)) {
+    sendGameEvent('mob_killed', {
+      mob: entity.name,
+      distance: Math.round(dist),
+    });
+  }
+});
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function updatePlayerState() {
@@ -272,9 +379,9 @@ function updatePlayerState() {
 
 function getBiomeName() {
   try {
-    const pos = bot.entity.position;
-    const biome = bot.blockAt(pos)?.biome;
-    if (biome && biome.name) return biome.name;
+    const pos = bot.entity.position.floored();
+    const block = bot.blockAt(pos);
+    if (block && block.biome && block.biome.name) return block.biome.name;
   } catch (e) {
     // Biome data might not be available
   }

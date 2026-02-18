@@ -31,7 +31,9 @@
       "dawn": 300,
       "biome_change": 60,
       "item_pickup": 10,
-      "creeper_nearby": 30
+      "creeper_nearby": 30,
+      "under_attack": 15,
+      "mob_killed": 10
     },
     "max_queue_depth": 2
   }
