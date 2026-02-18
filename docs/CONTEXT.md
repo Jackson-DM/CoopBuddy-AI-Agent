@@ -37,19 +37,24 @@ Chose WebSocket over REST/HTTP because:
 ### Bot Movement: mineflayer-pathfinder
 - Stay 3-5 blocks behind player (goal: FollowEntity, distance 3-5)
 - Most mature pathfinding plugin for Mineflayer
-- FSM: IDLE → FOLLOWING → ACTION (Phase 2 adds combat states)
+
+### Bot Combat: mineflayer-pvp
+- Melee combat via `bot.pvp.attack(entity)`
+- Threat priority map determines target selection (creeper=99 always flee, skeleton=5, zombie=2, etc.)
+- Auto-defend on `entityHurt` — finds nearest hostile within 5 blocks, attacks or flees
+- Flee logic: HP <= 6 or creeper → path to player instead of fighting
+- Brain can override with `[ACTION:attack_mob:type]`, `[ACTION:flee]`, `[ACTION:stop_attack]`
+- `pvp.stoppedAttacking` event clears combat state
 
 ### Event Debouncing (bot-side)
 - `bot/bot.js` has a `shouldSendEvent(eventType, cooldownMs)` function
-- `health_low`: 45s cooldown, skips health=0 (that's a death event)
-- `player_death`: 60s cooldown
-- `weather_change`: 120s cooldown
-- Brain-side also has per-event cooldowns in `config/settings.json` as a second layer
+- All 13 event cooldowns live in `config/settings.json` under `brain.cooldowns`
+- Brain-side also has per-event cooldowns as a second layer
 
 ### Minecraft Version: Java 1.20.4, online-mode=false
 - Mineflayer 4.22.0 compatible
 - online-mode=false means bot needs no premium account
-- Server should be on peaceful for testing (bot has no combat/survival AI yet)
+- Bot can now survive on normal/hard difficulty with combat AI
 - Player in-game username: `JaxieJ` (set in `.env` as `PLAYER_NAME`)
 
 ## Personality Notes
@@ -77,4 +82,5 @@ The personality must feel human, not AI:
 - `bot/bot.js` — Mineflayer bot entry point, event listeners, action handlers
 - `bot/wsClient.js` — Node WebSocket client with exponential backoff
 - `bot/actions/movement.js` — Follow/stop pathfinder actions
+- `bot/actions/combat.js` — Attack/flee/stop combat actions (mineflayer-pvp)
 - `bot/context/gameState.js` — Rolling game state snapshot

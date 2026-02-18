@@ -55,11 +55,18 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] 6 new event types: `health_critical`, `night_fall`, `dawn`, `biome_change`, `creeper_nearby`, `item_pickup`
 - [x] Brain prompts for all 6 new events
 - [x] 11 total proactive event types (was 5)
+- [x] Biome detection fix — floor position before blockAt lookup
+- [x] Eat action — `[ACTION:eat]` equips + consumes food from inventory
 
-### Phase 2b — Combat AI (Future)
-- Bot combat with mineflayer-pvp
-- Threat prioritization
-- Flee/fight decision logic
+### Phase 2b — Combat AI
+- [x] `mineflayer-pvp` plugin installed and loaded
+- [x] `bot/actions/combat.js` — attack, flee, stop, auto-defend, threat priorities
+- [x] Auto-defend on `entityHurt` — fights back or flees without brain permission
+- [x] Creeper = always flee, HP <= 6 = always flee
+- [x] Brain actions: `[ACTION:attack_mob:type]`, `[ACTION:flee]`, `[ACTION:stop_attack]`
+- [x] 2 new events: `under_attack` (15s), `mob_killed` (10s)
+- [x] Entity ID tracking in game state for targeting
+- [x] 13 total proactive event types (was 11)
 
 ### Phase 3 — Memory & Mood (Future)
 - Short-term mood state injected into system prompt dynamically

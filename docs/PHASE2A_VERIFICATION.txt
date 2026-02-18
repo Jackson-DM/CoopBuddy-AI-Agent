@@ -1,0 +1,37 @@
+Phase 2a — Verification Checklist
+===================================
+Test Date: 2026-02-17 (updated after second test round)
+
+Feature                          Status
+─────────────────────────────────────────────────
+Mob detection (hostile)          WORKING — zombies, spiders, creepers, drowned
+"blocks" not "meters"            WORKING — "Spider nearby, like 7 blocks"
+Bot identity (my HP vs player)   MOSTLY FIXED — sometimes still says "you" for itself
+Health alerts (drop-only)        WORKING — no spam, fires on actual drops only
+Night fall / dawn                WORKING — both fired correctly
+Weather change                   WORKING — rain + clear detected
+Player join                      WORKING
+Player death                     WORKING — "I just got clapped"
+Mob spawn (entitySpawn)          WORKING — spider at 7, zombie at 14
+Creeper proximity (<8 blocks)    WORKING — creeper at 6 blocks detected
+Inventory in game state          WORKING — "I see cooked chicken in my inv"
+Player detection                 WORKING — JaxieJ in passives
+Biome detection                  FIXED — was passing float coords, now uses .floored()
+Bot eating                       FIXED — [ACTION:eat] equips food + consumes
+Player action awareness          MISSING — can't see player killing/mining/etc
+Biome change event               READY — depends on biome fix (now fixed), needs retest
+Item pickup (notable)            UNTESTED — no notable items picked up yet
+Potion effects                   UNTESTED — no potions used
+
+Phase 2b Combat AI               IMPLEMENTED — needs testing on normal difficulty
+  Auto-defend on hit             IMPLEMENTED — entityHurt → nearest hostile → attack/flee
+  attack_mob action              IMPLEMENTED — [ACTION:attack_mob:zombie]
+  flee action                    IMPLEMENTED — [ACTION:flee] paths to player
+  stop_attack action             IMPLEMENTED — [ACTION:stop_attack]
+  Creeper flee logic             IMPLEMENTED — always flee, never melee
+  Low HP flee                    IMPLEMENTED — HP <= 6 → auto-flee
+  under_attack event             IMPLEMENTED — 15s cooldown
+  mob_killed event               IMPLEMENTED — 10s cooldown
+
+Remaining Issues:
+1. Player awareness: bot can't see player actions (fighting, mining, building) — future phase

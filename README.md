@@ -30,7 +30,8 @@ Talk to it with push-to-talk, it responds with voice and in-game chat. It reacts
 
 - **Voice Chat** — Hold V to talk, get spoken responses via ElevenLabs TTS (free pyttsx3 fallback)
 - **AI Personality** — Chill co-op buddy powered by Claude, never breaks character
-- **Game Awareness** — Reacts to hostile mobs, deaths, weather, low health
+- **Game Awareness** — Reacts to hostile mobs, deaths, weather, low health, biome changes, and more (13 event types)
+- **Combat AI** — Auto-defends when attacked, threat prioritization, flees creepers and low HP
 - **Follows You** — Pathfinder-based movement, stays 3 blocks behind
 - **In-Game Chat** — Every voice response echoed in Minecraft chat
 - **Proactive Events** — Rate-limited reactions so it doesn't spam
@@ -42,7 +43,7 @@ Talk to it with push-to-talk, it responds with voice and in-game chat. It reacts
 | AI Brain | Claude Sonnet 4.5 (Anthropic API) |
 | Speech-to-Text | faster-whisper base.en (local, ~500ms) |
 | Text-to-Speech | ElevenLabs streaming / pyttsx3 fallback |
-| Bot Framework | Mineflayer + mineflayer-pathfinder |
+| Bot Framework | Mineflayer + mineflayer-pathfinder + mineflayer-pvp |
 | IPC Bridge | WebSocket (Python server ↔ Node client) |
 | Voice Capture | sounddevice + keyboard (global hotkey) |
 
@@ -105,7 +106,8 @@ CoopBuddy-AI-Agent/
 │   ├── bot.js            # Bot entry point
 │   ├── wsClient.js       # WebSocket client (connects to Python)
 │   ├── actions/          # Bot action handlers
-│   │   └── movement.js   # Follow player via pathfinder
+│   │   ├── movement.js   # Follow player via pathfinder
+│   │   └── combat.js     # Attack/flee/auto-defend via pvp
 │   └── context/          # Game state tracking
 │       └── gameState.js  # Rolling world snapshot
 ├── config/
@@ -119,7 +121,8 @@ CoopBuddy-AI-Agent/
 ## Roadmap
 
 - [x] **Phase 1** — MVP: Voice chat + follow + mob reactions
-- [ ] **Phase 2** — Full game awareness (inventory, 8+ event types, combat)
+- [x] **Phase 2a** — Game awareness (inventory, potion effects, 11 event types)
+- [x] **Phase 2b** — Combat AI (auto-defend, attack/flee, threat priorities, 13 event types)
 - [ ] **Phase 3** — Memory & mood (session memory, dynamic personality)
 - [ ] **Phase 4** — Advanced voice (VAD, wake word)
 - [ ] **Phase 5** — Multi-player & web dashboard

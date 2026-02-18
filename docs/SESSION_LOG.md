@@ -160,3 +160,53 @@ All APIs used are already available in mineflayer / Node built-ins.
 ### Next Session
 - Test all 6 new events in-game (verification plan in Phase 2a design doc)
 - Phase 2b: combat AI with mineflayer-pvp
+
+---
+
+## Session 5 — Phase 2a Cleanup + Phase 2b Combat AI
+**Date**: 2026-02-17
+**Status**: Complete
+
+### Overview
+Fixed two remaining Phase 2a bugs (biome detection, eat action) and implemented full Phase 2b combat AI system with mineflayer-pvp.
+
+### Phase 2a Cleanup
+- **Biome detection fix**: `getBiomeName()` was passing float coords to `bot.blockAt()`, which returned null. Fixed by calling `.floored()` on position before lookup.
+- **Eat action**: Added `[ACTION:eat]` — bot finds food in inventory via `foodRecovery > 0`, equips to hand, and consumes. Brain proactively eats when food bar < 14.
+
+### Phase 2b Combat AI — Full Implementation
+- **mineflayer-pvp** installed and loaded as plugin
+- **`bot/actions/combat.js`** created (mirrors movement.js pattern):
+  - `attackNearest(bot, mobName?)` — finds nearest hostile, attacks via `bot.pvp.attack(entity)`
+  - `fleeToPlayer(bot, playerName)` — stops combat, paths to player
+  - `stopCombat(bot)` — clears combat state
+  - `onHurt(bot, attacker, playerName)` — auto-defend logic
+  - Threat priority map: creeper (99, always flee) > wither_skeleton/evoker (6) > skeleton/blaze/witch/vindicator (5) > stray/phantom/pillager (4) > spider/cave_spider (3) > zombie/drowned/husk (2) > others (1)
+  - Auto-flee when HP <= 6
+  - Never melee creepers — always flee
+- **3 new action handlers** in `bot.js`: `attack_mob`, `flee`, `stop_attack`
+- **Auto-defend**: `entityHurt` listener finds nearest hostile within 5 blocks and auto-attacks (or auto-flees if low HP / creeper)
+- **2 new game events**: `under_attack` (15s cooldown), `mob_killed` (10s cooldown)
+- **Entity ID tracking**: `gameState.js` now includes `id` field on entity entries for targeting
+- **Brain updates**: `_extract_actions()` handles `eat`, `attack_mob`, `flee`, `stop_attack`; `_build_event_prompt()` handles `under_attack`, `mob_killed`; system prompt documents all combat actions and personality notes
+
+### Files Created
+- `bot/actions/combat.js` — Combat module
+
+### Files Modified
+- `bot/bot.js` — pvp plugin, combat import, action handlers, auto-defend, mob_killed event, biome fix, eat action
+- `bot/context/gameState.js` — entity ID in entries
+- `server/brain.py` — 4 new action types, 2 new event prompts, combat system prompt
+- `config/settings.json` — 2 new cooldowns
+- `bot/package.json` / `bot/package-lock.json` — mineflayer-pvp dependency
+
+### Key Design Decisions
+- **Auto-defend without brain** — immediate response on hit, brain notified after via `under_attack` event
+- **Creeper = always flee** — never attempt melee, threat priority 99
+- **Low HP = flee** — below 6 HP, flee to player regardless of mob type
+- **Brain can override** — `[ACTION:attack_mob]`, `[ACTION:flee]`, `[ACTION:stop_attack]`
+- **pvp stoppedAttacking listener** — clears combat state when pvp plugin finishes
+
+### Next Session
+- Test combat on normal difficulty (auto-defend, attack command, flee, creeper flee)
+- Phase 3: Memory & mood system
