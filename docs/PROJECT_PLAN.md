@@ -76,10 +76,26 @@ Minecraft events → bot/bot.js (event listeners)
 - [x] `food_low` event — fires when food < 14 (60s cooldown), brain proactively eats
 - [x] 14 total proactive event types
 
-### Phase 3 — Memory & Mood (Future)
-- Short-term mood state injected into system prompt dynamically
-- Session memory (key events this session)
-- Optional cross-session SQLite memory
+### Phase 3 — Memory & Mood
+**Design spec**: `docs/PHASE3_DESIGN.md`
+
+**Mood system** — 4 states (`chill`, `hyped`, `nervous`, `frustrated`), transition
+table driven by game events, 5-minute decay back to chill, injected as
+`Mood:X` in the `[GAME STATE]` line.
+
+**Session memory** — rolling bank of up to 10 notable events (deaths, loot,
+combat milestones, biome changes), 5 most recent injected as a `[MEMORY]`
+block in every user message. No persistence — memory resets with the process.
+
+- [ ] `server/mood.py` — MoodTracker state machine + decay
+- [ ] `server/memory.py` — MemoryBank entries + formatter
+- [ ] `server/brain.py` — integrate mood + memory into context injection,
+      expand system prompt with mood/memory instructions
+- [ ] `server/main.py` — instantiate MoodTracker + MemoryBank, pass to Brain
+- [ ] `config/settings.json` — bump `max_tokens` 150 → 200, add `mood_decay_minutes: 5`
+- [ ] Verify mood field appears in logs on triggering events
+- [ ] Verify memory block grows naturally over a session
+- [ ] Verify Claude references past events in conversation
 
 ### Phase 4 — Advanced Voice (Future)
 - Toggle always-on VAD (voice/vad.py activation)

@@ -259,7 +259,17 @@ First live test of Phase 2b combat. Found and fixed multiple bugs across combat,
 - **Stability**: Pong disconnect cycling resolved. Death event spam resolved.
 - **Food**: Proactive `food_low` event added; eat action confirmed working when triggered manually.
 
+### End of Session — Phase 3 Spec Written
+Designed full Phase 3 spec (`docs/PHASE3_DESIGN.md`). Remaining Phase 2 items
+(creeper flee, food_low confirmation, biome/dawn/weather events) are low-risk
+and will be naturally exercised during Phase 3 sessions.
+
 ### Next Session
-- Confirm auto-flee from creeper
-- Confirm `food_low` proactive eating
-- Phase 3: Memory & mood system
+- Implement Phase 3: `server/mood.py`, `server/memory.py`, brain integration
+- See `docs/PHASE3_DESIGN.md` for full implementation order and design decisions
+
+---
+
+## Session 7 — Phase 3: Memory & Mood
+**Date**: TBD
+**Status**: Planned — see `docs/PHASE3_DESIGN.md`
