@@ -17,6 +17,9 @@ from typing import Optional
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
+from server.mood import MoodTracker
+from server.memory import MemoryBank
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -56,6 +59,21 @@ RESPONSE FORMAT:
 - Combat actions: [ACTION:attack_mob:zombie] to attack a specific mob type, [ACTION:attack_mob] for nearest hostile, [ACTION:flee] to run to the player, [ACTION:stop_attack] to disengage.
 - You auto-defend when hit — no need to manually trigger combat every time. But you can override: tell the player you're fighting back, or call flee if things look bad.
 - Creepers are terrifying — always flee from them, never melee. Low HP? Flee first, talk tough later.
+
+MOOD:
+You'll see Mood:X in the [GAME STATE] block. Let it color your energy — don't
+announce it, just embody it.
+- chill: your baseline. relaxed, measured.
+- hyped: something good just happened. faster, punchier, more exclamation.
+- nervous: danger's close. jittery short sentences, eyes on the surroundings.
+- frustrated: things went wrong. salty, a bit sarcastic, but still in it.
+Mood shifts should feel natural, not sudden. A single event doesn't flip your
+whole personality.
+
+MEMORY:
+You'll see a [MEMORY] block with recent session highlights. Reference these
+naturally when relevant — "yeah after almost dying to that skeleton..." — but
+don't recite them unprompted. They're context, not a script.
 
 GAME STATE:
 - You'll receive [GAME STATE] blocks with YOUR current health, food, biome, nearby mobs, etc.
@@ -114,10 +132,13 @@ class ConversationHistory:
         self._max = max_turns
         self._turns: list[dict] = []
 
-    def add_user(self, text: str, game_state: Optional[dict] = None):
+    def add_user(self, text: str, game_state: Optional[dict] = None,
+                 mood: str = "chill", memory_block: str = ""):
         content = ""
         if game_state:
-            content += _format_game_state(game_state) + "\n\n"
+            content += _format_game_state(game_state, mood) + "\n\n"
+        if memory_block:
+            content += memory_block + "\n\n"
         content += text
         self._turns.append({"role": "user", "content": content})
         self._trim()
@@ -139,9 +160,9 @@ def _roman(n: int) -> str:
     return {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}.get(n, str(n))
 
 
-def _format_game_state(gs: dict) -> str:
+def _format_game_state(gs: dict, mood: str = "chill") -> str:
     """Compact text block for context injection."""
-    parts = []
+    parts = [f"Mood:{mood}"]
     if "playerHealth" in gs:
         parts.append(f"HP:{gs['playerHealth']}/20")
     if "playerFood" in gs:
@@ -179,10 +200,13 @@ def _format_game_state(gs: dict) -> str:
 class Brain:
     """Core AI engine. Handles voice input and proactive game events."""
 
-    def __init__(self, game_state: dict):
+    def __init__(self, game_state: dict, mood_tracker: MoodTracker = None,
+                 memory_bank: MemoryBank = None):
         self._client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self._history = ConversationHistory()
         self._game_state = game_state
+        self._mood_tracker = mood_tracker
+        self._memory_bank = memory_bank
         self._voice_active = False
 
         # Proactive rate limiting
@@ -203,7 +227,9 @@ class Brain:
         Process voice input. Always runs (no cooldown).
         Returns (response_text, actions).
         """
-        self._history.add_user(user_input, self._game_state)
+        mood = self._mood_tracker.mood if self._mood_tracker else "chill"
+        memory_block = self._memory_bank.format() if self._memory_bank else ""
+        self._history.add_user(user_input, self._game_state, mood=mood, memory_block=memory_block)
 
         response = await self._call_claude(self._history.get_messages())
 
@@ -254,8 +280,17 @@ class Brain:
         async with self._proactive_lock:
             self._last_event_time[event_type] = now
 
+            if self._mood_tracker:
+                self._mood_tracker.on_event(event_type, data)
+                self._mood_tracker.tick()
+            if self._memory_bank:
+                self._memory_bank.add(event_type, data)
+
+            mood = self._mood_tracker.mood if self._mood_tracker else "chill"
+            memory_block = self._memory_bank.format() if self._memory_bank else ""
+
             prompt = _build_event_prompt(event_type, data)
-            self._history.add_user(prompt, self._game_state)
+            self._history.add_user(prompt, self._game_state, mood=mood, memory_block=memory_block)
 
             response = await self._call_claude(self._history.get_messages())
 

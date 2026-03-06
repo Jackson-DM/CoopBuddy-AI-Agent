@@ -37,6 +37,8 @@ logger = logging.getLogger("coopbuddy")
 from server.ws_server import WSServer
 from server.brain import Brain
 from server.voice import VoicePipeline
+from server.mood import MoodTracker
+from server.memory import MemoryBank
 
 # ── Game state cache ─────────────────────────────────────────────────────────
 
@@ -44,7 +46,9 @@ game_state: dict = {}
 
 # ── Core components ──────────────────────────────────────────────────────────
 
-brain = Brain(game_state)
+mood_tracker = MoodTracker()
+memory_bank = MemoryBank()
+brain = Brain(game_state, mood_tracker=mood_tracker, memory_bank=memory_bank)
 ws_server: WSServer = None  # set in main()
 
 

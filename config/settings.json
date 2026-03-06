@@ -18,7 +18,8 @@
 
   "brain": {
     "model": "claude-sonnet-4-5-20250929",
-    "max_tokens": 150,
+    "max_tokens": 200,
+    "mood_decay_minutes": 5,
     "history_length": 10,
     "cooldowns": {
       "mob_spawn": 30,
