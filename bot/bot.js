@@ -105,6 +105,12 @@ bot.once('spawn', () => {
     }
     _lastBiome = currentBiome;
 
+    // ── Food low alert ──
+    const currentFood = bot.food;
+    if (currentFood < 14 && shouldSendEvent('food_low', COOLDOWNS.food_low * 1000)) {
+      sendGameEvent('food_low', { food: Math.round(currentFood) });
+    }
+
     // ── Creeper proximity alert ──
     const nearbyCreepers = gameState.state.nearbyHostile.filter(
       (m) => m.name === 'creeper' && m.distance <= 8
@@ -137,6 +143,8 @@ let _lastBiome = '';
 let _lastRespawnTime = 0;
 let _lastHealth = 20;
 let _lastFood = 20;
+let _lastAttacker = null;
+let _lastAttackerTime = 0;
 
 // ── Game event listeners ────────────────────────────────────────────────────
 
@@ -171,10 +179,6 @@ bot.on('health', () => {
     playerFood: currentFood,
   });
 
-  // Food low — fire periodically while hungry (cooldown prevents spam)
-  if (currentFood < 14 && shouldSendEvent('food_low', COOLDOWNS.food_low * 1000)) {
-    sendGameEvent('food_low', { food: Math.round(currentFood) });
-  }
   _lastFood = currentFood;
 
   // Only alert when health actually decreased
@@ -200,7 +204,13 @@ bot.on('health', () => {
 bot.on('death', () => {
   gameState.update({ lastDeath: Date.now() });
   if (shouldSendEvent('player_death', COOLDOWNS.player_death * 1000)) {
-    sendGameEvent('player_death', { cause: 'Bot died' });
+    let cause = 'unknown';
+    if (bot.food === 0) {
+      cause = 'starvation';
+    } else if (_lastAttacker && Date.now() - _lastAttackerTime < 5000) {
+      cause = _lastAttacker;
+    }
+    sendGameEvent('player_death', { cause });
   }
 });
 
@@ -348,6 +358,9 @@ bot.on('entityHurt', (entity) => {
   }
 
   if (!attacker) return;
+
+  _lastAttacker = attacker.name;
+  _lastAttackerTime = Date.now();
 
   const action = combat.onHurt(bot, attacker, PLAYER_NAME);
   if (action) {

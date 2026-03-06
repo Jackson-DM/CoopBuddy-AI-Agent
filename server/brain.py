@@ -332,7 +332,7 @@ def _build_event_prompt(event_type: str, data: dict) -> str:
 
     if event_type == "food_low":
         food = data.get("food", "?")
-        return f"[EVENT] My food bar is at {food}/20 — I need to eat something."
+        return f"[EVENT] My food bar is at {food}/20. Embed [ACTION:eat] in your response to eat now if I have food in inventory."
 
     if event_type == "weather_change":
         weather = data.get("weather", "unknown")
