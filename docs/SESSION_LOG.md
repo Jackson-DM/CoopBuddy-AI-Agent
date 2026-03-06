@@ -271,5 +271,52 @@ and will be naturally exercised during Phase 3 sessions.
 ---
 
 ## Session 7 — Phase 3: Memory & Mood
-**Date**: TBD
-**Status**: Planned — see `docs/PHASE3_DESIGN.md`
+**Date**: 2026-03-05
+**Status**: Complete
+
+### Overview
+Implemented Phase 3 in full — mood state machine and session memory bank, both
+integrated into the brain. Also established a multi-LLM dev workflow using
+Claude Code as orchestrator with Codex CLI and Gemini CLI for delegated tasks.
+
+### Completed
+
+- **`server/mood.py`** — MoodTracker: 4-state machine (chill/hyped/nervous/frustrated),
+  transition table driven by 8 game events, 5-minute decay back to chill via `tick()`
+- **`server/memory.py`** — MemoryBank: FIFO-capped list (10 entries), stores only
+  notable events (6 types, filtered by item/mob significance), formats as `[MEMORY]`
+  block with relative timestamps
+- **`server/brain.py`** — Integrated mood + memory into context injection:
+  - `Mood:X` prepended as first field in every `[GAME STATE]` line
+  - `[MEMORY]` block (5 most recent entries) injected into every user message
+  - System prompt expanded with MOOD and MEMORY instruction sections
+  - `handle_game_event()` calls `mood_tracker.on_event()` + `memory_bank.add()` before building prompt
+  - `think()` reads current mood + memory for voice input path too
+  - `max_tokens` bumped 150 → 200 to accommodate memory block overhead
+- **`server/main.py`** — MoodTracker + MemoryBank instantiated at module level, wired into Brain
+- **`config/settings.json`** — `max_tokens: 200`, `mood_decay_minutes: 5`
+- **`agents/WORKFLOW.md`** — Documents Claude Code / Codex CLI / Gemini CLI dev-time task split
+
+### Multi-LLM Dev Workflow
+Established a 3-tool orchestration pattern for the session (in absence of OpenClaw):
+- **Gemini CLI** — read pass over `brain.py`, `main.py`, spec; summarized all integration points before any code was written
+- **Codex CLI** — implemented `mood.py` and `memory.py` from spec (well-defined, no ambiguity)
+- **Claude Code** — handled `brain.py` integration (async flow, history injection), orchestrated the session, verified all output before commit
+
+### Files Created
+- `server/mood.py`
+- `server/memory.py`
+- `agents/WORKFLOW.md`
+
+### Files Modified
+- `server/brain.py`
+- `server/main.py`
+- `config/settings.json`
+
+### Next Session
+- Boot server on normal difficulty and verify:
+  - `Mood:chill` appears in logs from start
+  - Mood transitions log at DEBUG level on triggering events
+  - `[MEMORY]` block grows naturally over a session
+  - Claude references past events naturally in conversation
+- Phase 4 planning: always-on VAD, wake word
